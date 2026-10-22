@@ -1,0 +1,8 @@
+
+streamlit
+scikit-learn
+pandas
+pypdf
+python-docx
+plotly
+google-genai
