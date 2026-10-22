@@ -80,22 +80,37 @@ def ask_llm(
         max_output_tokens=1024,
     )
 
-    with genai.Client(api_key=api_key) as client:
-        for attempt in range(MAX_ATTEMPTS):
-            try:
-                response = client.models.generate_content(
-                    model=MODEL,
-                    contents=prompt,
-                    config=config,
-                )
-                answer = (response.text or "").strip()
-                if not answer:
-                    raise RuntimeError("Gemini returned an empty response.")
-                return answer
-            except errors.ServerError:
-                if attempt == MAX_ATTEMPTS - 1:
-                    raise
-                # Wait briefly for temporary 503 / server overload errors.
-                time.sleep(2 ** (attempt + 1))
+   with genai.Client(api_key=api_key) as client:
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=prompt,
+                config=config,
+            )
 
-    raise RuntimeError("Gemini did not return a response.")
+            answer = (response.text or "").strip()
+
+            if not answer:
+                raise RuntimeError("Gemini returned an empty response.")
+
+            return answer
+
+        except errors.ServerError:
+            import logging
+            logging.exception(
+                "Gemini server error on attempt %s",
+                attempt + 1
+            )
+
+            if attempt == MAX_ATTEMPTS - 1:
+                raise
+
+            time.sleep(2 ** (attempt + 1))
+
+        except Exception:
+            import logging
+            logging.exception("Gemini chatbot request failed")
+            raise
+
+raise RuntimeError("Gemini did not return a response.")
