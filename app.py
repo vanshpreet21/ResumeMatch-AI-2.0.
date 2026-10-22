@@ -655,32 +655,50 @@ with st.container(key="floating_chat"):
             send = st.form_submit_button("Send ➤", use_container_width=True)
         if st.session_state.get("llm_last_error"):
             st.error(st.session_state["llm_last_error"])
-        if send and question.strip():
-            with st.spinner("AI is thinking..."):
-                try:
-                    answer = ask_llm(
-                        question=question,
-                        resume_text=st.session_state.resume_text,
-                        job_description=st.session_state.job_description,
-                        analysis=st.session_state.result,
-                        ats=st.session_state.ats,
-                        history=st.session_state.messages,
-                    )
-                    st.session_state.chat_engine = "LLM"
-                    st.session_state.llm_last_error = None
-                except Exception as error:
-                    # Print the exception type for local debugging without exposing secrets in the UI.
-                    print("GEMINI CHATBOT ERROR:", type(error).__name__, str(error))
-                    st.session_state.llm_last_error = (
-                        f"Gemini chatbot error: {type(error).__name__}. "
-                        "Check the VS Code terminal or Streamlit Cloud logs for details."
-                    )
-                    if st.session_state.result is not None:
-                        answer = coach_reply(question, st.session_state.result, st.session_state.ats, st.session_state.job_description)
-                        answer = "⚠️ Online AI unavailable; showing rule-based guidance.\n\n" + answer
-                    else:
-                        answer = "Online AI is unavailable. Check the Gemini API configuration and try again."
-                    st.session_state.chat_engine = "Fallback"
-            st.session_state.messages.append({"role": "user", "content": question})
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-            st.rerun()
+if send and question.strip():
+    with st.spinner("AI is thinking..."):
+        try:
+            answer = ask_llm(
+                question=question,
+                resume_text=st.session_state.resume_text,
+                job_description=st.session_state.job_description,
+                analysis=st.session_state.result,
+                ats=st.session_state.ats,
+                history=st.session_state.messages,
+            )
+
+            st.session_state.chat_engine = "LLM"
+            st.session_state.llm_last_error = None
+
+        except Exception as error:
+            import logging
+            logging.exception("GEMINI CHATBOT FAILED")
+
+            st.session_state.llm_last_error = (
+                f"Gemini chatbot error: {type(error).__name__}. "
+                "Check the Streamlit Cloud logs for details."
+            )
+
+            if st.session_state.result is not None:
+                answer = coach_reply(
+                    question,
+                    st.session_state.result,
+                    st.session_state.ats,
+                    st.session_state.job_description,
+                )
+                answer = (
+                    "⚠️ Online AI unavailable; showing rule-based guidance.\n\n"
+                    + answer
+                )
+            else:
+                answer = "Online AI is unavailable. Check the Gemini API configuration and try again."
+
+            st.session_state.chat_engine = "Fallback"
+
+    st.session_state.messages.append(
+        {"role": "user", "content": question}
+    )
+    st.session_state.messages.append(
+        {"role": "assistant", "content": answer}
+    )
+    st.rerun()
